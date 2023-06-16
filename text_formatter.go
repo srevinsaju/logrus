@@ -294,7 +294,11 @@ func (f *TextFormatter) printColored(b *bytes.Buffer, entry *Entry, keys []strin
 	prefix := ""
 	for _, k := range keys {
 		v := data[k]
-		fmt.Fprintf(b, "%s\x1b[%dm%s\x1b[0m=", prefix, levelColor, k)
+		if v != "" {
+			fmt.Fprintf(b, "%s\x1b[%dm%s\x1b[0m=", prefix, levelColor, k)
+		} else {
+			fmt.Fprintf(b, "%s\x1b[%dm%s\x1b[0m", prefix, levelColor, k)
+		}
 		f.appendValue(b, v)
 		prefix = " "
 	}
