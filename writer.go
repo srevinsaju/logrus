@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"runtime"
+	"strings"
 )
 
 // Writer at INFO level. See WriterLevel for details.
@@ -55,13 +56,22 @@ func (entry *Entry) WriterLevel(level Level) *io.PipeWriter {
 }
 
 func (entry *Entry) writerScanner(reader *io.PipeReader, printFunc func(args ...interface{})) {
-	scanner := bufio.NewScanner(reader)
-	for scanner.Scan() {
-		printFunc(scanner.Text())
+	for {
+		data := make([]byte, bufio.MaxScanTokenSize)
+		c, err := reader.Read(data)
+		if err != nil && err != io.EOF {
+			entry.Errorf("Error while reading from Writer: %s", err)
+			break
+		}
+
+		if c > 0 {
+			chunks := strings.Split(strings.TrimRight(string(data[:c]), "\n"), "\n")
+			for _, section := range chunks {
+				printFunc(section)
+			}
+		}
 	}
-	if err := scanner.Err(); err != nil {
-		entry.Errorf("Error while reading from Writer: %s", err)
-	}
+
 	reader.Close()
 }
 
