@@ -6,7 +6,6 @@ import (
 	"os"
 	"runtime"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +15,7 @@ import (
 const (
 	red    = 31
 	yellow = 33
+	purple = 35
 	blue   = 36
 	gray   = 37
 )
@@ -232,7 +232,9 @@ func (f *TextFormatter) Format(entry *Entry) ([]byte, error) {
 func (f *TextFormatter) printColored(b *bytes.Buffer, entry *Entry, keys []string, data Fields, timestampFormat string) {
 	var levelColor int
 	switch entry.Level {
-	case DebugLevel, TraceLevel:
+	case DebugLevel:
+		levelColor = purple
+	case TraceLevel:
 		levelColor = gray
 	case WarnLevel:
 		levelColor = yellow
@@ -244,19 +246,7 @@ func (f *TextFormatter) printColored(b *bytes.Buffer, entry *Entry, keys []strin
 		levelColor = blue
 	}
 
-	levelText := strings.ToUpper(entry.Level.String())
-	if !f.DisableLevelTruncation && !f.PadLevelText {
-		levelText = levelText[0:4]
-	}
-	if f.PadLevelText {
-		// Generates the format string used in the next line, for example "%-6s" or "%-7s".
-		// Based on the max level text length.
-		formatString := "%-" + strconv.Itoa(f.levelTextMaxLength) + "s"
-		// Formats the level text by appending spaces up to the max length, for example:
-		// 	- "INFO   "
-		//	- "WARNING"
-		levelText = fmt.Sprintf(formatString, levelText)
-	}
+	levelText := "•"
 
 	// Remove a single newline if it already exists in the message to keep
 	// the behavior of logrus text_formatter the same as the stdlib log package
@@ -284,28 +274,35 @@ func (f *TextFormatter) printColored(b *bytes.Buffer, entry *Entry, keys []strin
 	case f.DisableTimestamp:
 		fmt.Fprintf(b, "\x1b[%dm%s\x1b[0m%s", levelColor, levelText, caller)
 	case !f.FullTimestamp:
-		fmt.Fprintf(b, "\x1b[%dm%s\x1b[0m[%04d]%s", levelColor, levelText, int(entry.Time.Sub(baseTimestamp)/time.Second), caller)
+		fmt.Fprintf(b, "\x1b[%dm%04d\x1b[0m \x1b[%dm%s\x1b[0m%s", gray, int(entry.Time.Sub(baseTimestamp)/time.Second), levelColor, levelText, caller)
 	default:
 		fmt.Fprintf(b, "\x1b[%dm%s\x1b[0m[%s]%s", levelColor, levelText, entry.Time.Format(timestampFormat), caller)
 	}
 	if len(keys) > 0 {
-		fmt.Fprintf(b, " [")
+		fmt.Fprintf(b, " ")
 	}
 	prefix := ""
 	for _, k := range keys {
 		v := data[k]
+		s := ""
 		if v != "" {
-			fmt.Fprintf(b, "%s\x1b[%dm%s\x1b[0m=", prefix, levelColor, k)
+			s = fmt.Sprintf("%s\x1b[%dm%s\x1b[0m.%s", prefix, levelColor, k, v)
+			fmt.Fprintf(b, fmt.Sprintf("%-30.30s\x1b[0m", s))
 		} else {
-			fmt.Fprintf(b, "%s\x1b[%dm%s\x1b[0m", prefix, levelColor, k)
+			s = fmt.Sprintf("%s\x1b[%dm%s\x1b[0m", prefix, levelColor, k)
+			// fmt.Fprintf(b, s)
+			fmt.Fprintf(b, fmt.Sprintf("%-30.30s\x1b[0m", s))
+
 		}
-		f.appendValue(b, v)
-		prefix = " "
+
+		// fmt.Println(len(s))
+		if len(s) > 30 {
+			prefix = "… "
+		} else {
+			prefix = "  "
+		}
 	}
-	if len(keys) > 0 {
-		fmt.Fprintf(b, "]")
-	}
-	fmt.Fprintf(b, " %s", entry.Message)
+	fmt.Fprintf(b, "%s %s", prefix, entry.Message)
 
 }
 
