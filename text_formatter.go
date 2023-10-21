@@ -278,30 +278,30 @@ func (f *TextFormatter) printColored(b *bytes.Buffer, entry *Entry, keys []strin
 	default:
 		fmt.Fprintf(b, "\x1b[%dm%s\x1b[0m[%s]%s", levelColor, levelText, entry.Time.Format(timestampFormat), caller)
 	}
-	if len(keys) > 0 {
-		fmt.Fprintf(b, " ")
+  if len(keys) > 0 {
+		fmt.Fprintf(b, " \x1b[%dm[\x1b[0m", gray)
 	}
+
 	prefix := ""
-	for _, k := range keys {
+	for i, k := range keys {
 		v := data[k]
 		s := ""
 		if v != "" {
 			s = fmt.Sprintf("%s\x1b[%dm%s\x1b[0m.%s", prefix, levelColor, k, v)
-			fmt.Fprintf(b, fmt.Sprintf("%-30.30s\x1b[0m", s))
+			fmt.Fprintf(b, fmt.Sprintf("%s\x1b[0m", s))
 		} else {
 			s = fmt.Sprintf("%s\x1b[%dm%s\x1b[0m", prefix, levelColor, k)
 			// fmt.Fprintf(b, s)
-			fmt.Fprintf(b, fmt.Sprintf("%-30.30s\x1b[0m", s))
-
+			fmt.Fprintf(b, fmt.Sprintf("%s\x1b[0m", s))
 		}
-
-		// fmt.Println(len(s))
-		if len(s) > 30 {
-			prefix = "… "
-		} else {
-			prefix = "  "
-		}
+    if len(keys) - 1 != i {
+      fmt.Fprintf(b, ".")
+    }
 	}
+	if len(keys) > 0 {
+		fmt.Fprintf(b, "\x1b[%dm]\x1b[0m ", gray)
+	}
+
 	fmt.Fprintf(b, "%s %s", prefix, entry.Message)
 
 }
